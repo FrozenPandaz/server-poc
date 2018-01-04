@@ -1,8 +1,10 @@
 import * as express from 'express';
 import 'zone.js/dist/zone-node';
-import { platformDynamicServer, ServerModule, PlatformState } from '@angular/platform-server';
-import { NgModule, Component } from '@angular/core';
+import { platformDynamicServer, ServerModule, PlatformState, renderModule } from '@angular/platform-server';
+import { NgModule, Component, enableProdMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+
+enableProdMode();
 
 @Component({
     selector: 'body',
@@ -11,17 +13,19 @@ import { BrowserModule } from '@angular/platform-browser';
 class MyComponent {
     count: number = 0;
 
-
     ngOnInit() {
-        setInterval(() => {
+        const interval = setInterval(() => {
             this.count++;
+            clearInterval(interval);
         });
     }
 }
 
 @NgModule({
     imports: [
-        BrowserModule,
+        BrowserModule.withServerTransition({
+            appId: 'app'
+        }),
         ServerModule
     ],
     providers: [
@@ -41,9 +45,19 @@ class MyModule { }
     const app = express();
 
     app.get('/', (req, res) => {
-        res.send(
-            platformState.renderToString()
-        );
+        console.time('snapshot');
+        const result = platformState.renderToString();
+        console.timeEnd('snapshot');
+        res.send(result);
+    });
+
+    app.get('/boot', async (req, res) => {
+        console.time('bootstrap');
+        const result = await renderModule(MyModule, {
+            document: ''
+        });
+        console.timeEnd('bootstrap');
+        res.send(result);
     });
 
     app.listen(4000, () => {
