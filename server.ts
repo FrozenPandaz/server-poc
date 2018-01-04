@@ -8,6 +8,7 @@ import { Http, HttpModule } from '@angular/http';
 import { Subject } from 'rxjs/Subject';
 import { filter } from 'rxjs/operators/filter';
 import { skip } from 'rxjs/operators/skip';
+import { tap } from 'rxjs/operators/tap';
 import { CommonModule } from '@angular/common';
 
 enableProdMode();
@@ -29,7 +30,6 @@ class MyComponent {
     }
 
     ngOnInit() {
-        this.refreshData();
         this.onRequest.subscribe(() => {
             this.refreshData()
         });
@@ -39,6 +39,7 @@ class MyComponent {
         console.log('refreshing');
         this.http.get('http://localhost:4000/data')
             .subscribe((d) => {
+                console.log('refreshed');
                 this.data.next(d);
                 this.cdRef.detectChanges();
             });
@@ -78,15 +79,18 @@ class MyModule { }
 
     app.get('/', (req, res) => {
         console.time('snapshot');
-        refreshTrigger.next();
         appRef.isStable.pipe(
+            tap(console.log),
             filter(val => val)
         )
             .subscribe(() => {
                 const result = platformState.renderToString();
                 console.timeEnd('snapshot');
                 res.send(result);
-            })
+            });
+        setTimeout(() => {
+            refreshTrigger.next();
+        });
     });
 
     app.get('/boot', async (req, res) => {
